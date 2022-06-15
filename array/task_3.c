@@ -1,5 +1,6 @@
-#include "stdio.h"
+// 3. Заполнить верхний треугольник матрицы 1, а нижний 0.
 
+#include "stdio.h"
 #define N 3
 
 int main(int argc, char** argv)

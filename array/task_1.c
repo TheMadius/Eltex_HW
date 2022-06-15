@@ -1,5 +1,6 @@
-#include "stdio.h"
+// 1. Вывести квадратную матрицу по заданному N.
 
+#include "stdio.h"
 #define N 5
 
 int main(int argc, char** argv)

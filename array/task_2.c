@@ -1,5 +1,6 @@
-#include "stdio.h"
+// 2. Вывести заданный массив размером N в обратном порядке.
 
+#include "stdio.h"
 #define N 10
 
 int main(int argc, char** argv)
