@@ -46,5 +46,6 @@ int main(int argc, char** argv)
     result = fun_lib( first_value, second_value );
     printf("Результат равен: %d\n", result);
 
+    dlclose(lib);
     return 0;
 }
