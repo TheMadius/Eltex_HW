@@ -112,14 +112,14 @@ int main(int argc, char **argv) {
     printMenu(plagins, count);
 
     printf("Selection--> ");    
-	  menu_item = enterNum();
+    menu_item = enterNum();
 
     if(menu_item > count || menu_item <= 0) break;
 
     printf("\nEnter first argument--> ");    
-	  first_arg = enterNum();
-	  printf("Enter second argument--> ");    
-	  second_arg = enterNum();
+    first_arg = enterNum();
+    printf("Enter second argument--> ");    
+    second_arg = enterNum();
 
     result = plaginRun(plagins[menu_item - 1], first_arg, second_arg);
 
