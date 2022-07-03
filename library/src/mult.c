@@ -1,4 +1,4 @@
-int mult(int a, int b)
+int multiplication(int a, int b)
 {
     return a * b;
 }

@@ -26,16 +26,16 @@ int main(int argc, char** argv)
     switch(numMenu)
     {
         case 1:
-            c._int_c = add( a, b );
+            c._int_c = addition( a, b );
             break;
         case 2:
-            c._int_c = sub( a, b );
+            c._int_c = subtraction( a, b );
             break;
         case 3:
-            c._int_c = mult( a, b );
+            c._int_c = multiplication( a, b );
             break;
         case 4:
-            c._double_c = divs( a,b );
+            c._double_c = division( a,b );
             break;
         default:
             break;

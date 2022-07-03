@@ -27,16 +27,16 @@ int main(int argc, char** argv)
     switch(numMenu)
     {
         case 1:
-            fun_lib = dlsym( lib, "add");
+            fun_lib = dlsym( lib, "addition");
             break;
         case 2:
-            fun_lib = dlsym( lib, "sub");
+            fun_lib = dlsym( lib, "subtraction");
             break;
         case 3:
-            fun_lib = dlsym( lib, "mult");
+            fun_lib = dlsym( lib, "multiplication");
             break;
         case 4:
-            fun_lib = dlsym( lib, "divs");
+            fun_lib = dlsym( lib, "division");
             break;
         default:
             fun_lib = NULL;

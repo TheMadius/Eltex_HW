@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <errno.h>
 
-double divs(int a, int b)
+double division(int a, int b)
 {
     if(0 == b)
     {

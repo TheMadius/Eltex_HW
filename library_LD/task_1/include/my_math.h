@@ -1,9 +1,9 @@
 #ifndef MY_MATH
 #define MY_MATH
 
-int add( int, int );
-int sub( int, int );
-int divs( int, int );
-int mult( int, int );
+int addition( int, int );
+int subtraction( int, int );
+int multiplication( int, int );
+int division( int, int );
 
 #endif
