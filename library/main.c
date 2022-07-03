@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "my_math.h"
+#include "include/my_math.h"
 
 union Result
 {
