@@ -9,7 +9,7 @@ int main(int argc, char** argv)
     int (*fun_lib)(int,int);
 	int numMenu, result, first_value, second_value;
 
-    void *lib = dlopen("libmy_math.so",RTLD_LAZY);
+    void *lib = dlopen("bin/libmy_math.so",RTLD_LAZY);
     if( NULL == lib )
     {
         perror("Ошибка загрузки библиотеки");
