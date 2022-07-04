@@ -145,7 +145,7 @@ int main(int argc, char **argv) {
     printMenu(plugins, count);
 
     printf("Selection--> ");    
-<<<<<<< HEAD
+
 	  menu_item = enterNum();
     printf("\n");
 
