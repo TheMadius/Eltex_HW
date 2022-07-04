@@ -1,8 +1,8 @@
 4
-libplagin_add.so
-libplagin_div.so
-libplagin_mult.so
-libplagin_sub.so
+libplugin_add.so
+libplugin_div.so
+libplugin_mult.so
+libplugin_sub.so
 1
 2
 3
@@ -16,4 +16,3 @@ libplagin_sub.so
 9
 3
 0
-

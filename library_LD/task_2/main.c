@@ -4,13 +4,14 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include "include/plugin.h"
 
 #define TRUE 1
 
 int printToDoPlugin(void *plugin) {
   char *(*plugin_function)(void);
   
-  plugin_function = dlsym(plugin, "plagin_GetTodo");
+  plugin_function = dlsym(plugin, "plugin_GetTodo");
   if (NULL == plugin_function) {
     perror("Error: Function not found");
     return -1;
@@ -19,15 +20,15 @@ int printToDoPlugin(void *plugin) {
   return 0;
 }
 
-int pluginRun(void *plugin, int first_arg, int second_arg) {
-  int (*fun_lib)(int, int);
+int pluginRun(void *plugin, int argc, char **argv) {
+  int (*fun_lib)(int, char**);
   
   fun_lib = dlsym(plugin, "plugin_Run");
   if (NULL == fun_lib) {
     perror("Error: Function not found");
     exit(EXIT_FAILURE);
   }
-   return fun_lib(first_arg, second_arg);
+   return fun_lib(argc, argv);
 }
 
 int printMenu(void **array_plugins, int count_plugins) {
@@ -53,7 +54,6 @@ void **getPluginsPointer(char **name, int count_name) {
       return NULL;
     }
   }
-
   return plugins;
 }
 
@@ -62,6 +62,17 @@ int closePlagin(void **array_plugins, int count_plugins) {
     dlclose(array_plugins[i]);
   }
   return 0;  
+}
+
+struct setting_plugin getPluginSetting(void *plugin) {
+  struct setting_plugin (*getSetting)(void);
+
+  getSetting = dlsym(plugin, "plugin_GetSetting");
+  if (NULL == getSetting) {
+    perror("Error: Function not found");
+    exit(EXIT_FAILURE);
+  }
+  return getSetting();
 }
 
 char *enterString(void) {
@@ -82,11 +93,31 @@ char *enterString(void) {
   return text;
 }
 
+int isDigit(char *const string)
+{
+  int size_string = strlen(string);
+  for (int i = 0; i < size_string; i++) {
+    if (string[i] < '0' || string[i] > '9') return 0;
+  }
+  return 1;
+}
+
 int enterNum(void) {
-  char *num = enterString();
+  char *num;
+
+  while (TRUE) {
+    num = enterString();
+    if (isDigit(num)) {
+      break;
+   } else {
+      printf("Error: the entered string is not a number.\nEnter again-->");
+      free(num);
+    }
+  }
+
   int number = atoi(num);
   free(num);
-  
+
   return number;
 }
 
@@ -109,23 +140,43 @@ int main(int argc, char **argv) {
 
   while (TRUE) {
     int menu_item, first_arg, second_arg, result;
+    
+    printf("\n");
     printMenu(plugins, count);
 
     printf("Selection--> ");    
 	  menu_item = enterNum();
+    printf("\n");
 
     if(menu_item > count || menu_item <= 0) break;
 
-    printf("\nEnter first argument--> ");    
-	  first_arg = enterNum();
-	  printf("Enter second argument--> ");    
-	  second_arg = enterNum();
+    struct setting_plugin setting = getPluginSetting(plugins[menu_item - 1]);
 
-    result = pluginRun(plugins[menu_item - 1], first_arg, second_arg);
+    char **argv = malloc(sizeof(*argv) * setting.count_arg);
+    for (int i = 0; i < setting.count_arg; ++i) {
+      while(TRUE)
+      {
+        printf("Enter %d argument--> ", i + 1);    
+        argv[i] = enterString();
+        if (isDigit(argv[i])) {
+          break;
+        } else {
+          printf("Error: the entered string is not a number.Enter again.\n");
+          free(argv[i]);
+        }
+      }
+    }
 
-    printf("Result: %d\n", result);
+    result = pluginRun(plugins[menu_item - 1], setting.count_arg, argv);
+
+    printf("\nResult: %d\n", result);
+
+    for (int i = 0; i < setting.count_arg; ++i) {
+      free(argv[i]);
+    }
+    free(argv);
+
   }
-  
   closePlagin(plugins, count);
   free(plugins);
 
