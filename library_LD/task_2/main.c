@@ -4,9 +4,27 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <dirent.h>
+
 #include "include/plugin.h"
 
 #define TRUE 1
+
+int filter(const struct dirent *dir) {
+  const char *name = dir->d_name;
+  int len = strlen(name);
+
+  if(len <= 3)
+    return 0;
+
+  name += len - 3;
+
+  if (strcmp(name, ".so") == 0)
+    return 1;
+  else
+    return 0;
+}
 
 int printToDoPlugin(void *plugin) {
   char *(*plugin_function)(void);
@@ -121,19 +139,27 @@ int enterNum(void) {
   return number;
 }
 
+int getPluginName(const char *name_dir, int *count, char ***name_plugins) {
+  struct dirent **namelist;
+
+  *count = scandir(name_dir, &namelist, filter, alphasort);
+  *name_plugins = malloc(sizeof(**name_plugins) * (*count));
+  for (int i = 0; i < *count; ++i) {
+    int size_name = strlen(namelist[i]->d_name) + 1;
+    (*name_plugins)[i] = malloc(sizeof(***name_plugins) * size_name);
+    memcpy((*name_plugins)[i], namelist[i]->d_name, size_name);
+    free(namelist[i]);
+  }
+  free(namelist);
+  return 0;
+}
+
 int main(int argc, char **argv) {
   char **name_plugins;
   void **plugins;
   int count;
   
-  printf("Enter number of plugins: ");
-  count = enterNum();
-
-  name_plugins = malloc(sizeof(*name_plugins) * count);
-  for (int i = 0; i < count; ++i) {
-    printf("Enter name plugin (%d): ", i + 1);
-    name_plugins[i] = enterString();
-  }
+  getPluginName("plugins", &count, &name_plugins);
 
   plugins = getPluginsPointer(name_plugins, count);
   if(NULL == plugins) goto finally;
