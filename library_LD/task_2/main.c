@@ -6,24 +6,85 @@
 #include <string.h>
 #include <sys/types.h>
 #include <dirent.h>
-
 #include "include/plugin.h"
 
 #define TRUE 1
+#define FOLSE 0
+#define SIZE_SO 3
+
+char *enterString(void) {
+  char *text = malloc(sizeof(*text));
+  int size = 0;
+ 
+  while (TRUE) {
+    text[size] = getchar();
+    size++;
+
+    if (text[size - 1] == '\n') {
+      text[size - 1] = '\0';
+      break;
+    }
+
+    text = realloc(text, sizeof(*text) * (size + 1));
+  }
+  return text;
+}
+
+int isDigit(char *const string)
+{
+  int size_string = strlen(string);
+  for (int i = 0; i < size_string; i++) {
+    if (string[i] < '0' || string[i] > '9') return 0;
+  }
+  return 1;
+}
+
+int enterNum(void) {
+  char *num;
+
+  while (TRUE) {
+    num = enterString();
+    if (isDigit(num)) {
+      break;
+    } else {
+      printf("Error: the entered string is not a number.\nEnter again-->");
+      free(num);
+    }
+  }
+  int number = atoi(num);
+
+  free(num);
+  return number;
+}
 
 int filter(const struct dirent *dir) {
   const char *name = dir->d_name;
   int len = strlen(name);
 
-  if(len <= 3)
-    return 0;
+  if(len <= SIZE_SO)
+    return FOLSE;
 
-  name += len - 3;
+  name += len - SIZE_SO;
 
   if (strcmp(name, ".so") == 0)
-    return 1;
+    return TRUE;
   else
-    return 0;
+    return FOLSE;
+}
+
+int getPluginNameInDir(const char *name_dir, int *count, char ***name_plugins) {
+  struct dirent **namelist;
+
+  *count = scandir(name_dir, &namelist, filter, alphasort);
+  *name_plugins = malloc(sizeof(**name_plugins) * (*count));
+  for (int i = 0; i < *count; ++i) {
+    int size_name = strlen(namelist[i]->d_name) + 1;
+    (*name_plugins)[i] = malloc(sizeof(***name_plugins) * size_name);
+    memcpy((*name_plugins)[i], namelist[i]->d_name, size_name);
+    free(namelist[i]);
+  }
+  free(namelist);
+  return 0;
 }
 
 int printToDoPlugin(void *plugin) {
@@ -93,73 +154,12 @@ struct setting_plugin getPluginSetting(void *plugin) {
   return getSetting();
 }
 
-char *enterString(void) {
-  char *text = malloc(sizeof(*text));
-  int size = 0;
- 
-  while (TRUE) {
-    text[size] = getchar();
-    size++;
-
-    if (text[size - 1] == '\n') {
-      text[size - 1] = '\0';
-      break;
-    }
-
-    text = realloc(text, sizeof(*text) * (size + 1));
-  }
-  return text;
-}
-
-int isDigit(char *const string)
-{
-  int size_string = strlen(string);
-  for (int i = 0; i < size_string; i++) {
-    if (string[i] < '0' || string[i] > '9') return 0;
-  }
-  return 1;
-}
-
-int enterNum(void) {
-  char *num;
-
-  while (TRUE) {
-    num = enterString();
-    if (isDigit(num)) {
-      break;
-   } else {
-      printf("Error: the entered string is not a number.\nEnter again-->");
-      free(num);
-    }
-  }
-
-  int number = atoi(num);
-  free(num);
-
-  return number;
-}
-
-int getPluginName(const char *name_dir, int *count, char ***name_plugins) {
-  struct dirent **namelist;
-
-  *count = scandir(name_dir, &namelist, filter, alphasort);
-  *name_plugins = malloc(sizeof(**name_plugins) * (*count));
-  for (int i = 0; i < *count; ++i) {
-    int size_name = strlen(namelist[i]->d_name) + 1;
-    (*name_plugins)[i] = malloc(sizeof(***name_plugins) * size_name);
-    memcpy((*name_plugins)[i], namelist[i]->d_name, size_name);
-    free(namelist[i]);
-  }
-  free(namelist);
-  return 0;
-}
-
 int main(int argc, char **argv) {
   char **name_plugins;
   void **plugins;
   int count;
   
-  getPluginName("plugins", &count, &name_plugins);
+  getPluginNameInDir("plugins", &count, &name_plugins);
 
   plugins = getPluginsPointer(name_plugins, count);
   if(NULL == plugins) goto finally;
@@ -169,9 +169,7 @@ int main(int argc, char **argv) {
     
     printf("\n");
     printMenu(plugins, count);
-
     printf("Selection--> ");    
-
 	  menu_item = enterNum();
     printf("\n");
 
@@ -195,7 +193,6 @@ int main(int argc, char **argv) {
     }
 
     result = pluginRun(plugins[menu_item - 1], setting.count_arg, argv);
-
     printf("\nResult: %d\n", result);
 
     for (int i = 0; i < setting.count_arg; ++i) {
