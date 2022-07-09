@@ -62,7 +62,7 @@ int splitString(char ***split_text, char *string, char separator) {
   return count;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argV) {
   
   system("clear");
 
@@ -82,6 +82,10 @@ int main(int argc, char **argv) {
     if (0 == pid_child) {
       int error = execvp(argv[0], argv);
       perror("Error");
+      for(int i = 0; i <= argc; i++) {
+        free(argv[i]);
+      }
+      free(argv);
       exit(EXIT_FAILURE);
     } else {
       int exit_code;
@@ -89,6 +93,10 @@ int main(int argc, char **argv) {
       if (exit_code != 0) {
         printf("Error: Closing process with code %d\n", exit_code);
       }
+      for(int i = 0; i <= argc; i++) {
+        free(argv[i]);
+      }
+      free(argv);
     }
   }
 }
