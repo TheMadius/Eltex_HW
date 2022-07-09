@@ -86,6 +86,7 @@ int main(int argc, char **argV) {
         free(argv[i]);
       }
       free(argv);
+      free(command);
       exit(EXIT_FAILURE);
     } else {
       int exit_code;
@@ -97,6 +98,7 @@ int main(int argc, char **argV) {
         free(argv[i]);
       }
       free(argv);
+      free(command);
     }
   }
 }
