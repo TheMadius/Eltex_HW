@@ -39,7 +39,6 @@ int main(int argc, char ** argv) {
   signal(SIGWINCH, sig_winch);
   idlok (mainwin, TRUE);
   keypad (mainwin, TRUE);
-  mousemask(BUTTON1_CLICKED, NULL);
   scrollok(mainwin, TRUE);
 
   size_win_y = getmaxy(mainwin);
