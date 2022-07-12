@@ -2,88 +2,283 @@
 #include <sys/ioctl.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include <curses.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #define TRUE 1
 
-void mouse_click(void) {
-  MEVENT event;
-  getmouse(&event);
-  move(event.y, event.x);
-}
-
-void muve_new_line(WINDOW *win) {
-  int x, y, dy = 1;
-  getyx(win, y, x);
-  wmove(win, y + 1, 0);
-}
-
-void muve_cursor(WINDOW *win, int dx, int dy) {
-  int x, y;
-  getyx(win, y, x);
-  move(y + dy, x + dx);
-}
+char *readfile(const char *name_file);
+int splitString(char ***split_text, char *string, char separator);
+void addTextInWin(WINDOW *win, int line, char *text);
+void mouse_click(int *x, int *y);
+int muve_cursor(WINDOW *win, int dx, int dy);
+int changeText(char **string, int pos, char new_char);
 
 void sig_winch(int signo) {
   struct winsize size;
   ioctl(fileno(stdout), TIOCGWINSZ, (char *) &size);
   resizeterm(size.ws_row, size.ws_col);
-  nodelay(stdscr, 1);
-  while (wgetch(stdscr) != ERR);
-  nodelay(stdscr, 0);
-}
-
-void wfileOpen(WINDOW *win, const char *name_file) {
-  FILE *file = fopen(name_file, "r+");
-  char c;
-
-  while ((c = fgetc(file)) != EOF) {
-    addch(c);
-  }
-
-  wmove(win, 0, 0);
-
-  wrefresh(win);
-  fclose(file);
 }
 
 int main(int argc, char ** argv) {
-  initscr();
+  int this_x = 0, this_y = 0;
+  int size_win_x, size_win_y;
+  int line_term = 0;
+  char **line_text = NULL;
+  int line = 0;
+
+  WINDOW *mainwin;
+
+  mainwin = initscr();
   signal(SIGWINCH, sig_winch);
-  keypad(stdscr, 1);
+  idlok (mainwin, TRUE);
+  keypad (mainwin, TRUE);
   mousemask(BUTTON1_CLICKED, NULL);
+  scrollok(mainwin, TRUE);
+
+  size_win_y = getmaxy(mainwin);
+  size_win_x = getmaxx(mainwin);
 
   if (argc == 2) {
-    wfileOpen(stdscr, argv[1]);
+    char *text = NULL;
+    text = readfile(argv[1]);
+    if (text != NULL) {
+      line = splitString(&line_text, text, '\n');
+      free(text);
+      for(int i = 0; (i < size_win_y) && (i < line); i++) {
+        addTextInWin(mainwin, i, line_text[i]);
+      }
+    }
   }
-
+  
+  move(0, 0);
   refresh();
 
   while (TRUE) {
-      int press_key = wgetch(stdscr);
-
+    int press_key = wgetch(mainwin);
+    int exit = 0;
       switch (press_key) {
-      case KEY_MOUSE:
-        mouse_click();
-        break;
-      case KEY_UP:
-        muve_cursor(stdscr, 0, -1);
-        break;
-      case KEY_DOWN:
-        muve_cursor(stdscr, 0, 1);
-        break;
-      case KEY_LEFT:
-        muve_cursor(stdscr, -1, 0);
-        break;
-      case KEY_RIGHT:
-        muve_cursor(stdscr, 1, 0);
-        break;
-      case '\n':
-        muve_new_line(stdscr);
-        break;
+        case KEY_MOUSE: {
+          int click_x, click_y;
+          mouse_click(&click_x, &click_y);
+          this_y += click_y - line_term;
+          this_x = click_x;
+          break;
+        }
+        case KEY_UP: {
+          this_y--;
+          line_term--;
+          if (this_y < 0) {
+            this_y++;
+          } else if (muve_cursor(mainwin, 0, -1)) {
+            line_term = 0;
+            addTextInWin(mainwin, line_term, line_text[this_y]);  
+            wmove(mainwin, line_term, this_x);
+          } 
+          break;
+        }
+        case KEY_DOWN: {
+          this_y++;
+          line_term++;
+          if (this_y > (line - 1)) {
+            this_y--;
+          } else if (muve_cursor(mainwin, 0, 1)) {
+            line_term = size_win_y - 1;
+            addTextInWin(mainwin, line_term, line_text[this_y]);  
+            wmove(mainwin, line_term, this_x);
+          } 
+          break;
+        }
+        case KEY_LEFT:{
+          this_x--;
+          muve_cursor(mainwin, -1, 0);
+          break;
+        } 
+        case KEY_RIGHT: {
+          this_x++;
+          muve_cursor(mainwin, 1, 0);
+          break;
+        }
+        case KEY_F(1): {
+          exit = 1;
+          break;
+        }
+        case KEY_F(2): {
+          exit = 1;
+          break;
+        }
+        case '\n': {
+          this_y++;
+          this_x = 0;
+          line_term++;
+          if (this_y > (line - 1)) {
+            this_y--;
+          } else if (muve_cursor(mainwin, 0, 1)) {
+            line_term = size_win_y - 1;
+            addTextInWin(mainwin, line_term, line_text[this_y]);  
+            wmove(mainwin, line_term, this_x);
+          } 
+          break;
+        }
+        default: {
+          if (press_key > 0 && press_key < 255) {
+            changeText(&(line_text[this_y]), this_x, press_key);
+            this_x++;
+          }
+          wmove(mainwin, line_term, this_x);
+          break;
+        }
       }
+    
+    refresh();
+
+    if (exit) {
+      break;
+    }
   }
-  
+  for (int i = 0; i < line; i++) {
+    free(line_text[i]);
+  }
+  free(line_text);
+
   endwin();
   exit(EXIT_SUCCESS);
+}
+
+char *readfile(const char *name_file) {
+  int size_file;
+  char *buff = NULL;
+  int error;
+  int fd;
+  
+  fd = open(name_file, O_RDWR); 
+  size_file = lseek(fd, 0, SEEK_END);
+
+  if (size_file < 0) {
+    perror("Error");
+    return NULL;
+  }
+
+  error = lseek(fd, 0, SEEK_SET);
+  if (error < 0) {
+    perror("Error");
+    return NULL;
+  }
+
+  buff = malloc(sizeof(*buff) * (size_file + 1));
+  error = read(fd, buff, size_file);
+  if (error < 0) {
+    perror("Error");
+    return NULL;
+  }
+  buff[size_file] = '\0';
+
+  close(fd);
+  return buff;
+}
+
+int splitString(char ***split_text, char *string, char separator) {
+  if (string == NULL) {
+    return -1;
+  }
+  
+  int size = strlen(string);
+  int count = 1;
+  int len = 1;
+  
+  (*split_text) = malloc(sizeof(char *) * count);
+  (*split_text)[count - 1] = malloc(sizeof(char) * len);
+  (*split_text)[count - 1][len - 1] = '\0';
+
+  for (int i = 0; i < size; i++) {
+    if (string[i] == separator) {
+      (*split_text)[count - 1][len - 1] = '\0';
+
+      count++;
+      (*split_text) = realloc(*split_text, sizeof(char *) * count);
+
+      len = 1;
+      (*split_text)[count - 1] = malloc(sizeof(char) * len);
+      (*split_text)[count - 1][len - 1] = '\0';
+
+    } else {
+      len++;
+      (*split_text)[count - 1] = realloc((*split_text)[count - 1], sizeof(char) * len);
+      (*split_text)[count - 1][len - 2] = string[i];
+    } 
+  }
+  
+  (*split_text) = realloc(*split_text, sizeof(char *) * (count + 1));
+  (*split_text)[count] = (char *)NULL;
+
+  return count;
+}
+
+void addTextInWin(WINDOW *win, int line, char *text) {
+  int x, y;
+  int len = strlen(text);
+
+  wmove(win, line, 0);
+  
+  for(int i = 0; i < len; ++i) {
+    waddch(win, text[i]);
+  }
+  
+  wrefresh(win);
+}
+
+void mouse_click(int *x, int *y) {
+  MEVENT event;
+  getmouse(&event);
+  move(event.y, event.x);
+  *x = event.x;
+  *y = event.y;
+}
+
+int muve_cursor(WINDOW *win, int dx, int dy) {
+  int x, y;
+  int new_line = 0;
+  int max_x, max_y;
+
+  max_y = getmaxy(win);
+  max_x = getmaxx(win);
+
+  getyx(win, y, x);
+  x += dx;
+  y += dy;
+
+  if (y > (max_y - 1)) {
+    wscrl(win, 1);
+    new_line = 1;
+  } else if (y < 0) {
+    wscrl(win, -1);
+    new_line = 1;
+  } else {
+    wmove(win, y, x);
+  }
+
+  wrefresh(win); 
+  return new_line;
+}
+
+int changeText(char **string, int pos, char new_char) {
+  int size_string = strlen(*string);
+  if (pos < size_string) {
+    (*string)[pos] = new_char;
+  } else {
+    *string = realloc(*string, sizeof(**string) * (pos + 2));
+    for (int i = size_string; i < pos; i++) {
+      (*string)[i] = ' ';
+    }
+    (*string)[pos] = new_char;
+    (*string)[pos + 1] = '\0';
+
+    int size = strlen(*string);
+    return size;
+  }
 }
