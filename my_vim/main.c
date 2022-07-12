@@ -15,9 +15,9 @@
 char *readfile(const char *name_file);
 int splitString(char ***split_text, char *string, char separator);
 void addTextInWin(WINDOW *win, int line, char *text);
-void mouse_click(int *x, int *y);
 int muve_cursor(WINDOW *win, int dx, int dy);
 int changeText(char **string, int pos, char new_char);
+int saveInFile(char *namefile, char **text, int count_line);
 
 void sig_winch(int signo) {
   struct winsize size;
@@ -28,8 +28,9 @@ void sig_winch(int signo) {
 int main(int argc, char ** argv) {
   int this_x = 0, this_y = 0;
   int size_win_x, size_win_y;
-  int line_term = 0;
   char **line_text = NULL;
+  char *namefile = NULL;
+  int line_term = 0;
   int line = 0;
 
   WINDOW *mainwin;
@@ -48,6 +49,7 @@ int main(int argc, char ** argv) {
     char *text = NULL;
     text = readfile(argv[1]);
     if (text != NULL) {
+      namefile = argv[1];
       line = splitString(&line_text, text, '\n');
       free(text);
       for(int i = 0; (i < size_win_y) && (i < line); i++) {
@@ -63,13 +65,6 @@ int main(int argc, char ** argv) {
     int press_key = wgetch(mainwin);
     int exit = 0;
       switch (press_key) {
-        case KEY_MOUSE: {
-          int click_x, click_y;
-          mouse_click(&click_x, &click_y);
-          this_y += click_y - line_term;
-          this_x = click_x;
-          break;
-        }
         case KEY_UP: {
           this_y--;
           line_term--;
@@ -106,6 +101,11 @@ int main(int argc, char ** argv) {
         }
         case KEY_F(1): {
           exit = 1;
+          if(namefile) {
+            saveInFile(namefile, line_text, line);
+          } else {
+            
+          }
           break;
         }
         case KEY_F(2): {
@@ -148,6 +148,19 @@ int main(int argc, char ** argv) {
 
   endwin();
   exit(EXIT_SUCCESS);
+}
+
+int saveInFile(char *namefile, char **text, int count_line) {
+  int fd;
+  
+  fd = open(namefile, O_RDWR | O_TRUNC | O_CREAT, S_IREAD | S_IWRITE); 
+  for (int i = 0; i < count_line; i++) {
+    int size_string = strlen(text[i]);
+    write(fd, text[i], size_string);
+    if (i != count_line -1) {
+      write(fd, "\n", sizeof(char));
+    }
+  }
 }
 
 char *readfile(const char *name_file) {
@@ -230,14 +243,6 @@ void addTextInWin(WINDOW *win, int line, char *text) {
   }
   
   wrefresh(win);
-}
-
-void mouse_click(int *x, int *y) {
-  MEVENT event;
-  getmouse(&event);
-  move(event.y, event.x);
-  *x = event.x;
-  *y = event.y;
 }
 
 int muve_cursor(WINDOW *win, int dx, int dy) {
