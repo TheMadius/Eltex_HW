@@ -18,6 +18,7 @@ void addTextInWin(WINDOW *win, int line, char *text);
 int muve_cursor(WINDOW *win, int dx, int dy);
 int changeText(char **string, int pos, char new_char);
 int saveInFile(char *namefile, char **text, int count_line);
+void updateWin(WINDOW *win, char **text, int count, int start_line);
 
 void sig_winch(int signo) {
   struct winsize size;
@@ -34,7 +35,6 @@ int main(int argc, char ** argv) {
   int line = 0;
 
   WINDOW *mainwin;
-
   mainwin = initscr();
   signal(SIGWINCH, sig_winch);
   idlok (mainwin, TRUE);
@@ -51,12 +51,15 @@ int main(int argc, char ** argv) {
       namefile = argv[1];
       line = splitString(&line_text, text, '\n');
       free(text);
-      for(int i = 0; (i < size_win_y) && (i < line); i++) {
-        addTextInWin(mainwin, i, line_text[i]);
-      }
+      updateWin(mainwin, line_text, line, 0);
     }
+  } else {
+    line = 1;
+    line_text = malloc(sizeof(char*) * line);
+    line_text[line - 1] = malloc(sizeof(char));
+    line_text[line - 1][0] = '\0';
   }
-  
+
   move(0, 0);
   refresh();
 
@@ -69,11 +72,12 @@ int main(int argc, char ** argv) {
           line_term--;
           if (this_y < 0) {
             this_y++;
+            line_term++;
           } else if (muve_cursor(mainwin, 0, -1)) {
             line_term = 0;
-            addTextInWin(mainwin, line_term, line_text[this_y]);  
+            addTextInWin(mainwin, line_term, line_text[this_y]);
             wmove(mainwin, line_term, this_x);
-          } 
+          }
           break;
         }
         case KEY_DOWN: {
@@ -81,47 +85,56 @@ int main(int argc, char ** argv) {
           line_term++;
           if (this_y > (line - 1)) {
             this_y--;
+            line_term--;
           } else if (muve_cursor(mainwin, 0, 1)) {
             line_term = size_win_y - 1;
-            addTextInWin(mainwin, line_term, line_text[this_y]);  
+            addTextInWin(mainwin, line_term, line_text[this_y]);
             wmove(mainwin, line_term, this_x);
-          } 
+          }
           break;
         }
         case KEY_LEFT:{
           this_x--;
           muve_cursor(mainwin, -1, 0);
           break;
-        } 
+        }
         case KEY_RIGHT: {
           this_x++;
           muve_cursor(mainwin, 1, 0);
           break;
         }
         case KEY_F(1): {
-          exit = 1;
           if(namefile) {
             saveInFile(namefile, line_text, line);
           } else {
-            
+            char namefile[20];
+            wscrl(mainwin, 2);
+            wmove(mainwin, size_win_y - 2, 0);
+            wprintw(mainwin ,"Enter name file:");
+            wmove(mainwin, size_win_y - 1, 0);
+            wgetnstr(mainwin, namefile, 20);
+            saveInFile(namefile, line_text, line);
           }
-          break;
+          goto finally;
         }
         case KEY_F(2): {
-          exit = 1;
-          break;
+          goto finally;
         }
         case '\n': {
           this_y++;
           this_x = 0;
           line_term++;
           if (this_y > (line - 1)) {
-            this_y--;
-          } else if (muve_cursor(mainwin, 0, 1)) {
+            line++;
+            line_text = realloc(line_text, sizeof(char*) * line);
+            line_text[line - 1] = malloc(sizeof(char*));
+            line_text[line - 1][0] = '\0';
+          }
+          if (muve_cursor(mainwin, 0, 1)) {
             line_term = size_win_y - 1;
-            addTextInWin(mainwin, line_term, line_text[this_y]);  
+            addTextInWin(mainwin, line_term, line_text[this_y]);
             wmove(mainwin, line_term, this_x);
-          } 
+          }
           break;
         }
         default: {
@@ -133,13 +146,11 @@ int main(int argc, char ** argv) {
           break;
         }
       }
-    
-    refresh();
 
-    if (exit) {
-      break;
-    }
+    refresh();
   }
+finally:
+
   for (int i = 0; i < line; i++) {
     free(line_text[i]);
   }
@@ -149,10 +160,23 @@ int main(int argc, char ** argv) {
   exit(EXIT_SUCCESS);
 }
 
+void updateWin(WINDOW *win, char **text, int count, int start_line) {
+  int max_x, max_y;
+  wclear(win);
+
+  max_y = getmaxy(win);
+  max_x = getmaxx(win);
+
+  for(int i = 0; (i < max_y) && (i < count); i++) {
+    addTextInWin(win, i, text[start_line + i]);
+   }
+  wrefresh(win);
+}
+
 int saveInFile(char *namefile, char **text, int count_line) {
   int fd;
-  
-  fd = open(namefile, O_RDWR | O_TRUNC | O_CREAT, S_IREAD | S_IWRITE); 
+
+  fd = open(namefile, O_RDWR | O_TRUNC | O_CREAT, S_IREAD | S_IWRITE);
   for (int i = 0; i < count_line; i++) {
     int size_string = strlen(text[i]);
     write(fd, text[i], size_string);
@@ -167,8 +191,8 @@ char *readfile(const char *name_file) {
   char *buff = NULL;
   int error;
   int fd;
-  
-  fd = open(name_file, O_RDWR); 
+
+  fd = open(name_file, O_RDWR);
   size_file = lseek(fd, 0, SEEK_END);
 
   if (size_file < 0) {
@@ -198,11 +222,11 @@ int splitString(char ***split_text, char *string, char separator) {
   if (string == NULL) {
     return -1;
   }
-  
+
   int size = strlen(string);
   int count = 1;
   int len = 1;
-  
+
   (*split_text) = malloc(sizeof(char *) * count);
   (*split_text)[count - 1] = malloc(sizeof(char) * len);
   (*split_text)[count - 1][len - 1] = '\0';
@@ -222,9 +246,9 @@ int splitString(char ***split_text, char *string, char separator) {
       len++;
       (*split_text)[count - 1] = realloc((*split_text)[count - 1], sizeof(char) * len);
       (*split_text)[count - 1][len - 2] = string[i];
-    } 
+    }
   }
-  
+
   (*split_text) = realloc(*split_text, sizeof(char *) * (count + 1));
   (*split_text)[count] = (char *)NULL;
 
@@ -236,11 +260,11 @@ void addTextInWin(WINDOW *win, int line, char *text) {
   int len = strlen(text);
 
   wmove(win, line, 0);
-  
+
   for(int i = 0; i < len; ++i) {
     waddch(win, text[i]);
   }
-  
+
   wrefresh(win);
 }
 
@@ -261,12 +285,12 @@ int muve_cursor(WINDOW *win, int dx, int dy) {
     new_line = 1;
   } else if (y < 0) {
     wscrl(win, -1);
-    new_line = 1;
+    new_line = -1;
   } else {
     wmove(win, y, x);
   }
 
-  wrefresh(win); 
+  wrefresh(win);
   return new_line;
 }
 
